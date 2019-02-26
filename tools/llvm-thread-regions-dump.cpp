@@ -29,7 +29,6 @@
 #include <fstream>
 
 #include "args.h"
-//#include "ControlFlowGraph.h"
 #include "../lib/llvm/analysis/ThreadRegions/include/Graphs/ThreadRegionsBuilder.h"
 #include "../lib/llvm/analysis/ThreadRegions/include/Graphs/GraphBuilder.h"
 #include "dg/llvm/analysis/ThreadRegions/ControlFlowGraph.h"
@@ -50,16 +49,16 @@ int main(int argc, const char *argv[])
     try {
         Arguments arguments;
         arguments.add('p', "path", "Path to llvm bitcode file", true);
-        arguments.add('o', "outputFile", "Path to dot graphviz output file", true);
+        arguments.add('o', "output-file", "Path to dot graphviz output file", true);
         arguments.parse(argc, argv);
         if (arguments("path")) {
             module = arguments("path").getString();
         }
-        if (arguments("outputFile")) {
-            graphvizFileName = arguments("outputFile").getString();
+        if (arguments("output-file")) {
+            graphvizFileName = arguments("output-file").getString();
         }
-    } catch (std::exception &e) {
-        cout << "\nException: " << e.what() << endl;
+    } catch (std::exception & e) {
+        cerr << "\nException: " << e.what() << endl;
     }
     std::unique_ptr<Module> M = llvm::parseIRFile(module.c_str(), SMD, context);
 
@@ -69,7 +68,7 @@ int main(int argc, const char *argv[])
         return 1;
     }
 
-    dg::LLVMPointerAnalysis pointsToAnalysis(M.get());
+    dg::LLVMPointerAnalysis pointsToAnalysis(M.get(), "main", dg::analysis::Offset::UNKNOWN, true);
     pointsToAnalysis.run<dg::analysis::pta::PointerAnalysisFI>();
 
     ControlFlowGraph controlFlowGraph(&pointsToAnalysis);

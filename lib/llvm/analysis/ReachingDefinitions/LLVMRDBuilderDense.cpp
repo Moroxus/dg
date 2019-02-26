@@ -687,7 +687,7 @@ void LLVMRDBuilderDense::matchForksAndJoins()
     auto joinsMap = PTA->getJoins();
 
     for (auto & joinInstAndJoinNode : joinsMap) {
-        auto callInst = joinInstAndJoinNode.first->getUserData<llvm::CallInst>();
+        auto callInst = joinInstAndJoinNode.first;
         auto PSJoinNode = joinInstAndJoinNode.second;
         auto iterator = threadJoinCalls.find(callInst);
         if (iterator != threadJoinCalls.end()) {
