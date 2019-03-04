@@ -43,6 +43,7 @@
 #include "dg/llvm/LLVMDependenceGraph.h"
 #include "dg/llvm/LLVMNode.h"
 #include "dg/llvm/analysis/PointsTo/PointerAnalysis.h"
+#include "../lib/llvm/analysis/ControlDependence/NonTerminationSensitiveControlDependencyAnalysis.h"
 
 #include "llvm/LLVMDGVerifier.h"
 #include "llvm/analysis/ControlExpression.h"
@@ -165,7 +166,7 @@ bool LLVMDependenceGraph::build(llvm::Module *m, llvm::Function *entry)
 
     // build recursively DG from entry point
     build(entryFunction);
-//    computeInterferenceDependentEdges();
+
     return true;
 };
 
@@ -968,6 +969,33 @@ void LLVMDependenceGraph::computeControlExpression(bool addCDs)
                         LLVMBBlock *B2 = our_blocks[lab->getLabel()];
                         B1->addControlDependence(B2);
                     }
+                }
+            }
+        }
+    }
+}
+
+void LLVMDependenceGraph::computeNonTerminationControlDependencies() {
+    dg::cd::NonTerminationSensitiveControlDependencyAnalysis ntscdAnalysis(entryFunction, PTA);
+    ntscdAnalysis.computeDependencies();
+    auto dependencies = ntscdAnalysis.controlDependencies();
+
+    for (const auto & node : dependencies) {
+        if (!node.first->isArtificial()) {
+            auto lastInstruction = findInstruction(castToLLVMInstruction(node.first->lastInstruction()),
+                                                   getConstructedFunctions());
+            for (const auto dependant : node.second) {
+                for (const auto instruction : dependant->llvmInstructions()) {
+                    auto dgInstruction = findInstruction(castToLLVMInstruction(instruction), getConstructedFunctions());
+                    if (lastInstruction && dgInstruction) {
+                        lastInstruction->addControlDependence(dgInstruction);
+                    } else {
+                        std::cerr << "Control dependency could not be set up, one of two instructions was not found.\n";
+                    }
+                }
+                if (dependant->isExit()) {
+                    auto noreturn = lastInstruction->getDG()->getOrCreateNoReturn();
+                    lastInstruction->addControlDependence(noreturn);
                 }
             }
         }
